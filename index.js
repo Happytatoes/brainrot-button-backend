@@ -11,7 +11,9 @@ const Count = require('./models/Count.js');
 const Visitor = require('./models/Visitor');
 
 // Middleware
-app.use(cors());
+app.use(cors({
+	origin: 'https://happytatoes.github.io'
+}));
 app.use(express.json());
 app.use('/', router);
 
@@ -50,6 +52,7 @@ router.post('/increment', async (req, res) => {
 		}
 		res.json({ count: doc.value });
 	} catch (err) {
+		console.error('Increment Error:', err);
 		res.status(500).json({ error: 'Error incrementing count' });
 	}
 });
