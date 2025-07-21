@@ -1,53 +1,92 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
+const mongoose = require('mongoose');
+
+const mongo_uri = process.env.MONGO_URI;
 
 const app = express();
 const port = process.env.PORT || 3000;
-const countFile = path.join(__dirname, 'count.json');
-const visitorsFile = path.join(__dirname, 'visitors.json');
+const router = express.Router();
+const Count = require('./models/Count.js');
+const Visitor = require('./models/Visitor');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/', router);
 
-// Functions for data
-function loadData(filePath, fallbackValue) {
-    try {
-      const data = fs.readFileSync(filePath);
-      return JSON.parse(data);
-    } catch {
-      return fallbackValue;
-    }
-  }
-  
-  function saveData(filePath, data) {
-    fs.writeFileSync(filePath, JSON.stringify(data));
-  }
-  
-// Load data
-let count = loadData(countFile, { count: 0 }).count;
-let visitorCount = loadData(visitorsFile, { visitors: 0 }).visitors;
-
-// Route to get the current count
-app.get('/count', (req, res) => {
-  res.json({ count });
+// Try mongoose connection
+mongoose.connect(mongo_uri, {
+	useNewUrlParser: true,
+	useUnifiedTopology: true,
+}).then(() => {
+	console.log('MongoDB connected');
+}).catch(err => {
+	console.error('MongoDB connection error:', err);
 });
 
-app.post('/increment', (req, res) => {
-    count++;
-    saveData(countFile, { count });
-    res.json({ count });
+// Get current count
+router.get('/count', async (req, res) => {
+	try {
+		let doc = await Count.findOne();
+		if (!doc) {
+			doc = await Count.create({ value: 0 });
+		}
+		res.json({ count: doc.value });
+	} catch (err) {
+		res.status(500).json({ error: 'Error fetching count' });
+	}
 });
-  
-app.get('/visit', (req, res) => {
-    visitorCount++;
-    saveData(visitorsFile, { visitors: visitorCount });
-    res.json({ visitors: visitorCount });
+
+// Increment count
+router.post('/increment', async (req, res) => {
+	try {
+		let doc = await Count.findOne();
+		if (!doc) {
+			doc = await Count.create({ value: 1 });
+		} else {
+			doc.value += 1;
+			await doc.save();
+		}
+		res.json({ count: doc.value });
+	} catch (err) {
+		res.status(500).json({ error: 'Error incrementing count' });
+	}
+});
+
+// Get visitor count
+router.get('/visitors', async (req, res) => {
+	try {
+		let visitorDoc = await Visitor.findOne();
+		if (!visitorDoc) {
+			visitorDoc = await Visitor.create({ value: 0 });
+		}
+		res.json({ visitors: visitorDoc.value });
+	} catch (err) {
+		res.status(500).json({ error: 'Error fetching visitor count' });
+	}
+});
+
+
+// Increment visitor count
+router.post('/addvisitor', async (req, res) => {
+	try {
+		let visitorDoc = await Visitor.findOne();
+		if (!visitorDoc) {
+			visitorDoc = await Visitor.create({ value: 1 });
+		} else {
+			visitorDoc.value += 1;
+			await visitorDoc.save();
+		}
+		res.json({ visits: visitorDoc.value });
+	} catch (err) {
+		res.status(500).json({ error: 'Error incrementing visitor count' });
+	}
 });
 
 // Start the server
 app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+	console.log(`Server listening on port ${port}`);
 });
+
+module.exports = router;
