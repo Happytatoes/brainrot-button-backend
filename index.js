@@ -18,16 +18,12 @@ app.use(express.json());
 app.use('/', router);
 
 // Mongoose connection establish
-mongoose.connect(mongo_uri, {
-	useNewUrlParser: true,
-	useUnifiedTopology: true,
-}).then(() => {
-	console.log('MongoDB connected');
-	app.listen(port, () => {
-		console.log(`Server listening on port ${port}`);
-	});
-}).catch(err => {
-	console.error('MongoDB connection error:', err);
+mongoose.connect(mongo_uri)
+  .then(() => {
+    console.log('MongoDB connected');
+ })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
 });
 
 // Get current count
